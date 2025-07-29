@@ -33,6 +33,10 @@ const Index = () => {
   const [selectedRegion, setSelectedRegion] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPoint, setSelectedPoint] = useState<DeliveryPoint | null>(null);
+  const [deliveryTasks, setDeliveryTasks] = useState<DeliveryTask[]>([]);
+  const [language, setLanguage] = useState<'RU' | 'UZ'>('RU');
+  const [showSettings, setShowSettings] = useState(false);
+  const [showAddStore, setShowAddStore] = useState(false);
 
   // Mock data
   const regions = ['Чиланзар', 'Юнусабад', 'Мирзо-Улугбек', 'Сергели', 'Яшнабад'];
@@ -70,7 +74,7 @@ const Index = () => {
     }
   ];
 
-  const deliveryTasks: DeliveryTask[] = [
+  const initialTasks: DeliveryTask[] = [
     {
       id: '1',
       storeName: 'Супермаркет "Корзинка"',
@@ -103,6 +107,13 @@ const Index = () => {
     }
   ];
 
+  // Initialize tasks on component mount
+  React.useEffect(() => {
+    if (deliveryTasks.length === 0) {
+      setDeliveryTasks(initialTasks);
+    }
+  }, []);
+
   const filteredPoints = deliveryPoints.filter(point => 
     (selectedRegion === '' || point.region === selectedRegion) &&
     (searchQuery === '' || point.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -134,9 +145,56 @@ const Index = () => {
   const courierStats = {
     name: 'Алишер Каримов',
     rating: 4.8,
-    todayDeliveries: 12,
+    todayDeliveries: deliveryTasks.filter(t => t.status === 'delivered').length,
     totalDeliveries: 847,
-    efficiency: 96
+    efficiency: Math.round((deliveryTasks.filter(t => t.status === 'delivered').length / Math.max(deliveryTasks.length, 1)) * 100)
+  };
+
+  const handleTaskStatusChange = (taskId: string, newStatus: 'delivered' | 'failed') => {
+    setDeliveryTasks(prevTasks => 
+      prevTasks.map(task => 
+        task.id === taskId ? { ...task, status: newStatus } : task
+      )
+    );
+  };
+
+  const handleLanguageToggle = () => {
+    setLanguage(prev => prev === 'RU' ? 'UZ' : 'RU');
+  };
+
+  const handleOpenInMaps = (point: DeliveryPoint) => {
+    const url = `https://maps.google.com/?q=${point.lat},${point.lng}`;
+    window.open(url, '_blank');
+  };
+
+  const handleCall = (phone: string) => {
+    window.location.href = `tel:${phone}`;
+  };
+
+  const handleLogout = () => {
+    if (confirm('Вы уверены, что хотите выйти?')) {
+      alert('Выход из системы...');
+    }
+  };
+
+  const handleAddStore = () => {
+    setShowAddStore(true);
+  };
+
+  const handleManageStores = () => {
+    alert('Открываем управление точками доставки...');
+  };
+
+  const handleViewStats = () => {
+    alert('Открываем статистику и аналитику...');
+  };
+
+  const handleManageCouriers = () => {
+    alert('Открываем управление курьерами...');
+  };
+
+  const handleSettings = () => {
+    alert('Открываем настройки приложения...');
   };
 
   return (
@@ -155,7 +213,13 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <Badge variant="outline" className="text-xs">RU</Badge>
+              <Badge 
+                variant="outline" 
+                className="text-xs cursor-pointer hover:bg-gray-100" 
+                onClick={handleLanguageToggle}
+              >
+                {language}
+              </Badge>
               <Avatar className="w-8 h-8">
                 <AvatarImage src="" />
                 <AvatarFallback className="text-xs bg-primary text-white">АК</AvatarFallback>
@@ -297,11 +361,20 @@ const Index = () => {
 
                     {task.status === 'pending' && (
                       <div className="flex space-x-2">
-                        <Button size="sm" className="flex-1 bg-success hover:bg-success/90">
+                        <Button 
+                          size="sm" 
+                          className="flex-1 bg-success hover:bg-success/90"
+                          onClick={() => handleTaskStatusChange(task.id, 'delivered')}
+                        >
                           <Icon name="Check" size={16} className="mr-1" />
                           Доставлен
                         </Button>
-                        <Button size="sm" variant="outline" className="flex-1 text-destructive border-destructive">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex-1 text-destructive border-destructive"
+                          onClick={() => handleTaskStatusChange(task.id, 'failed')}
+                        >
                           <Icon name="X" size={16} className="mr-1" />
                           Не доставлен
                         </Button>
@@ -363,15 +436,15 @@ const Index = () => {
             </Card>
 
             <div className="space-y-2">
-              <Button className="w-full" variant="outline">
+              <Button className="w-full" variant="outline" onClick={handleSettings}>
                 <Icon name="Settings" size={16} className="mr-2" />
                 Настройки
               </Button>
-              <Button className="w-full" variant="outline">
+              <Button className="w-full" variant="outline" onClick={handleLanguageToggle}>
                 <Icon name="Globe" size={16} className="mr-2" />
-                Язык: Русский
+                Язык: {language === 'RU' ? 'Русский' : 'Узбекский'}
               </Button>
-              <Button className="w-full" variant="outline" className="text-destructive border-destructive">
+              <Button className="w-full" variant="outline" className="text-destructive border-destructive" onClick={handleLogout}>
                 <Icon name="LogOut" size={16} className="mr-2" />
                 Выйти
               </Button>
@@ -382,14 +455,14 @@ const Index = () => {
           <TabsContent value="admin" className="p-4 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-medium text-gray-900">Админ панель</h3>
-              <Button size="sm">
+              <Button size="sm" onClick={handleAddStore}>
                 <Icon name="Plus" size={16} className="mr-1" />
                 Добавить
               </Button>
             </div>
 
             <div className="space-y-3">
-              <Card>
+              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={handleManageStores}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -401,7 +474,7 @@ const Index = () => {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={handleViewStats}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -413,7 +486,7 @@ const Index = () => {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={handleManageCouriers}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -474,11 +547,11 @@ const Index = () => {
             </div>
 
             <div className="flex space-x-3 pt-4">
-              <Button className="flex-1">
+              <Button className="flex-1" onClick={() => handleOpenInMaps(selectedPoint)}>
                 <Icon name="Navigation" size={16} className="mr-2" />
                 Открыть в картах
               </Button>
-              <Button variant="outline" className="flex-1">
+              <Button variant="outline" className="flex-1" onClick={() => handleCall(selectedPoint.phone)}>
                 <Icon name="Phone" size={16} className="mr-2" />
                 Позвонить
               </Button>
